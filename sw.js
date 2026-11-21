@@ -1,46 +1,20 @@
-<!DOCTYPE html>
-<html lang="zh-Hant-TW">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>慢慢小鎮 Slowtown</title>
-  <meta name="description" content="一款可愛文青風的小動物建設模擬遊戲：種田、開工坊、做生意、存錢投資，慢慢經營屬於你的小鎮。">
-  <meta name="theme-color" content="#f5efe3">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="慢慢小鎮">
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icons/icon-180.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Huninn&display=swap">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&display=swap">
-  <link rel="stylesheet" href="css/style.css">
-</head>
-<body>
-  <div id="particles" aria-hidden="true"></div>
-  <div id="app">
-    <header id="hud"></header>
-    <main id="view"></main>
-    <nav id="nav"></nav>
-  </div>
-  <div id="sheet" class="hidden">
-    <div class="backdrop" data-act="closeSheet"></div>
-    <div class="sheet-card"><div class="grab"></div><div class="sheet-body"></div></div>
-  </div>
-  <div id="modal" class="hidden"><div class="modal-card"></div></div>
-  <div id="toasts"></div>
-  <div id="fx"></div>
-  <script src="js/data.js"></script>
-  <script src="js/engine.js"></script>
-  <script src="js/art.js"></script>
-  <script src="js/ui.js"></script>
-  <script>
-    if ('serviceWorker' in navigator && location.protocol === 'https:') {
-      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
-    }
-  </script>
-</body>
-</html>
+/* 慢慢小鎮 Service Worker：離線可玩 */
+const CACHE = 'slowtown-v1';
+const ASSETS = ['./', './index.html', './css/style.css', './js/data.js', './js/engine.js', './js/ui.js',
+  './manifest.webmanifest', './icons/icon.svg', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'];
+self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())); });
+self.addEventListener('activate', e => {
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+});
+self.addEventListener('fetch', e => {
+  const req = e.request;
+  if (req.method !== 'GET') return;
+  const url = new URL(req.url);
+  if (url.origin === location.origin) {
+    // 網路優先（拿到新版），失敗時用快取（離線）
+    e.respondWith(fetch(req).then(res => { const cp = res.clone(); caches.open(CACHE).then(c => c.put(req, cp)); return res; })
+      .catch(() => caches.match(req).then(r => r || caches.match('./index.html'))));
+  } else if (url.host.includes('fonts.g')) {
+    e.respondWith(caches.match(req).then(r => r || fetch(req).then(res => { const cp = res.clone(); caches.open(CACHE).then(c => c.put(req, cp)); return res; })));
+  }
+});
