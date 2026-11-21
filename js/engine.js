@@ -62,11 +62,43 @@ G.migrate = function () {
   S.market = S.market || { m: {}, ev: {}, last: now() };
   S.balloon = S.balloon || { next: now() };
   if (!S.st) G.initStocks();
+  S.st.h = S.st.h || {}; S.st.open = S.st.open || {}; S.st.news = S.st.news || []; S.st.hold = S.st.hold || {};
+  for (const k of Object.keys(STOCKS)) {
+    if (!S.st.p[k]) { S.st.p[k] = STOCKS[k].price; S.st.f[k] = STOCKS[k].price; }
+    if (!S.st.h[k] || S.st.h[k].length < 2) { const p = S.st.p[k]; S.st.h[k] = Array.from({ length: 40 }, (_, i) => +(p * (1 + Math.sin(i / 4) * 0.01)).toFixed(2)); S.st.h[k].push(+p.toFixed(2)); }
+    if (!S.st.open[k]) S.st.open[k] = S.st.p[k];
+  }
+  S.nh = S.nh || [];
   while (S.tiles.length < COLS * MAX_ROWS) S.tiles.push(null);
 };
-G.exportSave = () => btoa(unescape(encodeURIComponent(JSON.stringify(S))));
-G.importSave = function (code) {
-  const obj = JSON.parse(decodeURIComponent(escape(atob(code.trim()))));
+/* 存檔代碼：去掉可重建的資料 → 壓縮 → base64url，約為原本的 1/10 */
+const b64u = bytes => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); };
+const unb64u = str => { str = str.replace(/-/g, '+').replace(/_/g, '/'); while (str.length % 4) str += '='; const bin = atob(str); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; };
+async function pipeBytes(bytes, stream) {
+  const res = new Response(new Blob([bytes]).stream().pipeThrough(stream));
+  return new Uint8Array(await res.arrayBuffer());
+}
+G.slimSave = function () {
+  const o = JSON.parse(JSON.stringify(S));
+  o.st.h = {}; o.st.news = (o.st.news || []).slice(0, 3); o.nh = (o.nh || []).slice(-24);
+  return JSON.stringify(o);
+};
+G.exportSave = async function () {
+  const bytes = new TextEncoder().encode(G.slimSave());
+  if (typeof CompressionStream !== 'undefined') {
+    try { return 'ST2.' + b64u(await pipeBytes(bytes, new CompressionStream('deflate-raw'))); } catch (e) { /* 改用不壓縮 */ }
+  }
+  return 'ST1.' + b64u(bytes);
+};
+G.importSave = async function (code) {
+  code = String(code).replace(/\s+/g, '');
+  let json;
+  if (code.startsWith('ST2.')) {
+    if (typeof DecompressionStream === 'undefined') throw new Error('這個瀏覽器太舊，無法讀取壓縮存檔');
+    json = new TextDecoder().decode(await pipeBytes(unb64u(code.slice(4)), new DecompressionStream('deflate-raw')));
+  } else if (code.startsWith('ST1.')) json = new TextDecoder().decode(unb64u(code.slice(4)));
+  else json = decodeURIComponent(escape(atob(code)));      // 舊版長代碼
+  const obj = JSON.parse(json);
   if (!obj || !obj.player || !obj.tiles) throw new Error('bad save');
   S = obj; G.migrate(); G.save();
 };

@@ -158,6 +158,7 @@ UI.openSheet = function (fn) {
   setHTML(b, fn());
 };
 UI.closeSheet = function () {
+  if (V.onSheetClose) { const f = V.onSheetClose; V.onSheetClose = null; try { f(); } catch (e) { /* ignore */ } }
   V.sheetFn = null; V.shelfPick = null;
   $('#sheet').classList.add('hidden');
 };
@@ -872,6 +873,8 @@ function renderSettings() {
     <div class="between news"><span>音效</span><button class="btn ${S.settings.sound ? '' : 'ghost'} sm" data-act="toggle" data-k="sound">${S.settings.sound ? '開' : '關'}</button></div>
     <div class="between news"><span>震動回饋</span><button class="btn ${S.settings.vibe ? '' : 'ghost'} sm" data-act="toggle" data-k="vibe">${S.settings.vibe ? '開' : '關'}</button></div></div>
     <div class="card"><h3>💾 存檔</h3><div class="muted">遊戲會自動存在這台裝置的瀏覽器裡。想換手機或備份時，可以匯出存檔代碼。</div>
+    <div class="row mt12"><button class="btn mustard grow" data-act="qrShow">📱 顯示 QR Code</button><button class="btn mustard grow" data-act="qrScan">📷 掃描 QR Code</button></div>
+    <div class="tiny mt8">換手機最快的方法：舊手機按「顯示 QR Code」，新手機按「掃描 QR Code」對著螢幕掃就好。</div>
     <div class="row mt12"><button class="btn blue grow" data-act="exportSave">匯出存檔</button><button class="btn ghost grow" data-act="importSave">匯入存檔</button></div></div>
     <div class="card"><h3>📱 加到主畫面</h3><div class="muted" style="line-height:1.7">
       <b>iPhone / iPad：</b>用 Safari 開啟 → 點「分享」→「加入主畫面」。<br>
@@ -897,7 +900,7 @@ function renderIntro() {
     <div class="field"><label>你的名字</label><input id="in-name" maxlength="10" placeholder="例如：小米" value="${esc(p.name)}"></div>
     <div class="field"><label>小鎮的名字</label><input id="in-town" maxlength="10" placeholder="例如：午後鎮" value="${esc(p.town)}"></div>
     <button class="btn terra block mt12" style="padding:13px;font-size:16px" data-act="startGame">搬進小鎮 →</button></div>
-    <div class="tiny mt12">已經有存檔代碼？<a href="#" data-act="importSave" style="color:var(--terra)">匯入存檔</a></div></div>`;
+    <div class="tiny mt12">從別台裝置搬過來？<a href="#" data-act="qrScan" style="color:var(--terra)">📷 掃描 QR Code</a> 或 <a href="#" data-act="importSave" style="color:var(--terra)">匯入存檔</a></div></div>`;
 }
 
 /* ───────── 粒子 ───────── */
@@ -1068,26 +1071,57 @@ const ACT = {
   },
   letter: d => UI.openSheet(() => head(vface(d.id, 'lg'), VILLAGERS[d.id].name + '的信', `友情 ${heartsStr(G.hearts(d.id))}`) + letterHTML(d.id)),
   toggle: d => { S.settings[d.k] = !S.settings[d.k]; },
-  exportSave: () => {
-    const code = G.exportSave();
-    UI.openSheet(() => head('💾', '匯出存檔', '複製下面的代碼，貼到新裝置的「匯入存檔」') +
-      `<textarea id="exp" readonly style="width:100%;height:140px;border-radius:12px;border:1.5px solid var(--line2);padding:8px;font-size:11px;background:var(--card)">${code}</textarea>
-      <button class="btn block mt8" data-act="copyExp">📋 複製</button>`);
+  exportSave: async () => {
+    V.exportCode = await G.exportSave();
+    UI.openSheet(() => head('💾', '匯出存檔', '把存檔帶到另一台手機或平板') +
+      `<div class="card tight"><div class="between"><b>存檔代碼</b><span class="tiny">共 ${V.exportCode.length.toLocaleString()} 字（已壓縮）</span></div>
+        <div class="tiny mt8">不用自己選取，按下面的按鈕就好</div>
+        <button class="btn mustard block mt12" data-act="qrShow">📱 顯示 QR Code（給另一台掃）</button>
+        <button class="btn terra block mt8" data-act="copyCode">📋 一鍵複製代碼</button>
+        ${navigator.share ? `<button class="btn blue block mt8" data-act="shareSave">📤 傳到 LINE／訊息／AirDrop</button>` : ''}
+        <button class="btn ghost block mt8" data-act="downloadSave">💾 存成檔案</button></div>
+      <div class="card tight"><b style="font-size:13px">怎麼搬到新裝置？</b><div class="tiny mt8" style="line-height:1.8">
+        ① 按「一鍵複製」或「傳到 LINE」，把代碼傳給自己<br>② 在新裝置打開遊戲 → 日記 → 設定 → 匯入存檔<br>③ 按「從剪貼簿貼上」或「選擇存檔檔案」就完成了</div></div>
+      <details class="tiny"><summary>顯示代碼文字</summary><textarea readonly style="width:100%;height:110px;border-radius:12px;border:1.5px solid var(--line2);padding:8px;font-size:10px;background:var(--card);margin-top:6px">${V.exportCode}</textarea></details>`);
   },
-  copyExp: () => {
-    const ta = $('#exp'); ta.select();
-    (navigator.clipboard ? navigator.clipboard.writeText(ta.value) : Promise.reject()).then(() => UI.toast('已複製 ✓')).catch(() => { document.execCommand('copy'); UI.toast('已複製 ✓'); });
+  qrShow: (d, el, e) => { e && e.preventDefault(); qrShow(); },
+  qrScan: (d, el, e) => { e && e.preventDefault(); qrScan(); },
+  copyCode: async () => {
+    const ok = await copyText(V.exportCode);
+    UI.toast(ok ? '✓ 已複製！到新裝置貼上就可以了' : '這個瀏覽器不讓我自動複製，請改用「存成檔案」或展開代碼手動複製');
+  },
+  shareSave: async () => {
+    const name = `慢慢小鎮存檔-${new Date().toISOString().slice(0, 10)}.txt`;
+    try {
+      const file = new File([V.exportCode], name, { type: 'text/plain' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) await navigator.share({ files: [file], title: '慢慢小鎮存檔' });
+      else await navigator.share({ title: '慢慢小鎮存檔', text: V.exportCode });
+    } catch (e) { if (e && e.name !== 'AbortError') UI.toast('分享沒有成功，請改用一鍵複製'); }
+  },
+  downloadSave: () => {
+    try {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([V.exportCode], { type: 'text/plain' }));
+      a.download = `慢慢小鎮存檔-${new Date().toISOString().slice(0, 10)}.txt`;
+      document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      UI.toast('💾 已存檔（iPhone 會在「檔案」App 的下載項目）');
+    } catch (e) { UI.toast('沒辦法存檔，請改用一鍵複製'); }
   },
   importSave: (d, el, e) => {
     e && e.preventDefault();
-    UI.openSheet(() => head('📥', '匯入存檔', '貼上存檔代碼（會覆蓋目前的進度）') +
-      `<textarea id="imp" style="width:100%;height:140px;border-radius:12px;border:1.5px solid var(--line2);padding:8px;font-size:12px;background:var(--card)"></textarea>
-      <button class="btn terra block mt8" data-act="doImport">匯入</button>`);
+    UI.openSheet(() => head('📥', '匯入存檔', '會覆蓋這台裝置目前的進度') +
+      `<button class="btn mustard block" data-act="qrScan">📷 掃描 QR Code</button>
+      <button class="btn terra block mt8" data-act="pasteImport">📋 從剪貼簿貼上並匯入</button>
+      <label class="btn blue block mt8" style="position:relative;overflow:hidden">📂 選擇存檔檔案<input id="imp-file" type="file" accept=".txt,.json,text/plain" style="position:absolute;inset:0;opacity:0"></label>
+      <details class="tiny mt12"><summary>或手動貼上代碼</summary>
+      <textarea id="imp" style="width:100%;height:110px;border-radius:12px;border:1.5px solid var(--line2);padding:8px;font-size:12px;background:var(--card);margin-top:6px"></textarea>
+      <button class="btn ghost block mt8" data-act="doImport">匯入</button></details>`);
   },
-  doImport: () => {
-    try { G.importSave($('#imp').value); UI.closeSheet(); UI.toast('✓ 存檔匯入成功'); boot(); }
-    catch (e) { UI.toast('代碼好像不對，請再檢查一次'); }
+  pasteImport: async () => {
+    try { const t = await navigator.clipboard.readText(); await runImport(t); }
+    catch (e) { UI.toast('讀不到剪貼簿，請展開「手動貼上代碼」，長按貼上'); }
   },
+  doImport: async () => { await runImport($('#imp').value); },
   reset: () => UI.confirm('真的要刪除存檔嗎？所有進度都會消失！', () => UI.confirm('最後確認：刪除後無法復原', () => { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} S = null; location.reload(); }, '刪除'), '刪除'),
   introSp: d => { V.intro.species = d.id; syncIntro(); },
   introColor: d => { V.intro.color = d.c; syncIntro(); },
@@ -1102,6 +1136,134 @@ const ACT = {
     boot();
   },
 };
+/* ───────── QR Code 同步 ───────── */
+const _scripts = {};
+function loadScript(src) {
+  return _scripts[src] || (_scripts[src] = new Promise((ok, no) => {
+    const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = () => { delete _scripts[src]; no(new Error('load ' + src)); };
+    document.head.appendChild(el);
+  }));
+}
+const QR_CHUNK = 280;
+async function qrShow() {
+  try { await loadScript('js/vendor/qrcode.js'); } catch (e) { return UI.toast('QR 元件載入失敗，請連上網路再試一次'); }
+  const code = await G.exportSave();
+  const id = Math.random().toString(36).slice(2, 6);
+  const n = Math.ceil(code.length / QR_CHUNK);
+  const svgs = [];
+  for (let i = 0; i < n; i++) {
+    const q = qrcode(0, 'M');
+    q.addData(`SLQ1|${id}|${i}|${n}|${code.slice(i * QR_CHUNK, (i + 1) * QR_CHUNK)}`);
+    q.make();
+    svgs.push(q.createSvgTag({ cellSize: 4, margin: 3, scalable: true }));
+  }
+  let k = 0, paused = false, speed = 1100;
+  const html = head('📱', '用 QR Code 同步', `共 ${n} 張，會自動輪播`) +
+    `<div class="qrbox" id="qr-img"></div>
+    <div class="qrdots" id="qr-dots">${svgs.map((_, i) => `<i data-k="${i}"></i>`).join('')}</div>
+    <div class="row mt8"><button class="btn ghost sm grow" id="qr-pause">⏸ 暫停</button><button class="btn ghost sm grow" id="qr-speed">🐢 慢一點</button></div>
+    <div class="card tight mt12"><div class="tiny" style="line-height:1.8">① 在新的手機或平板打開慢慢小鎮<br>② 日記 → 設定 → 📷 掃描 QR Code（第一次開啟時在開場畫面下方）<br>③ 鏡頭對準這個畫面，等全部 ${n} 張都收到就完成了<br>💡 把這台螢幕調亮一點會比較好掃</div></div>`;
+  UI.openSheet(() => html);
+  const draw = () => {
+    const box = $('#qr-img'); if (!box) return;
+    box.innerHTML = svgs[k];
+    document.querySelectorAll('#qr-dots i').forEach((d, i) => d.classList.toggle('on', i === k));
+  };
+  draw();
+  const tick = () => { if (!paused) { k = (k + 1) % n; draw(); } V.qrTimer = setTimeout(tick, speed); };
+  if (n > 1) V.qrTimer = setTimeout(tick, speed);
+  $('#qr-pause').onclick = () => { paused = !paused; $('#qr-pause').textContent = paused ? '▶ 繼續' : '⏸ 暫停'; };
+  $('#qr-speed').onclick = () => { speed = speed > 1500 ? 1100 : 2200; $('#qr-speed').textContent = speed > 1500 ? '🐇 快一點' : '🐢 慢一點'; };
+  $('#qr-dots').onclick = e => { const i = e.target.dataset && e.target.dataset.k; if (i !== undefined) { k = +i; paused = true; $('#qr-pause').textContent = '▶ 繼續'; draw(); } };
+  let lock = null;
+  try { if (navigator.wakeLock) lock = await navigator.wakeLock.request('screen'); } catch (e) { /* 不支援就算了 */ }
+  V.onSheetClose = () => { clearTimeout(V.qrTimer); if (lock) lock.release().catch(() => {}); };
+}
+async function qrScan() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return UI.toast('這個瀏覽器不能使用相機，請用匯入存檔代碼的方式');
+  const useNative = 'BarcodeDetector' in window;
+  let detector = null;
+  if (useNative) { try { detector = new BarcodeDetector({ formats: ['qr_code'] }); } catch (e) { detector = null; } }
+  if (!detector) { try { await loadScript('js/vendor/jsQR.js'); } catch (e) { return UI.toast('掃描元件載入失敗，請連上網路再試一次'); } }
+  const html = head('📷', '掃描 QR Code', '對準另一台裝置上的 QR Code') +
+    `<div class="scanbox"><video id="qr-video" playsinline muted autoplay></video><div class="scanframe"></div></div>
+    <div class="center mt8"><b id="qr-status">正在開啟相機…</b></div>
+    <div class="qrdots" id="qr-got"></div>
+    <div class="tiny center mt8">QR Code 會自動輪播，拿穩等它全部收到就好</div>`;
+  UI.openSheet(() => html);
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }); }
+  catch (e) { $('#qr-status').textContent = '沒辦法開啟相機，請允許相機權限'; return; }
+  const video = $('#qr-video');
+  if (!video) { stream.getTracks().forEach(t => t.stop()); return; }
+  video.srcObject = stream; try { await video.play(); } catch (e) { /* iOS 會自動播放 */ }
+  $('#qr-status').textContent = '對準 QR Code…';
+  const canvas = document.createElement('canvas'), ctx = canvas.getContext('2d', { willReadFrequently: true });
+  let parts = {}, cur = null, total = 0, done = false, raf = 0, last = 0;
+  const stop = () => { done = true; cancelAnimationFrame(raf); stream.getTracks().forEach(t => t.stop()); };
+  V.onSheetClose = stop;
+  const show = () => {
+    $('#qr-got').innerHTML = Array.from({ length: total }, (_, i) => `<i class="${parts[i] !== undefined ? 'on' : ''}"></i>`).join('');
+    $('#qr-status').textContent = `已收到 ${Object.keys(parts).length} / ${total}`;
+  };
+  const finish = async code => {
+    stop(); UI.sfx('up'); $('#qr-status').textContent = '✓ 全部收到了！';
+    const go = async () => { V.onSheetClose = null; await runImport(code); };
+    if (S) { UI.closeSheet(); UI.confirm('要用掃到的存檔覆蓋這台的進度嗎？', go, '覆蓋'); }
+    else go();
+  };
+  const handle = text => {
+    if (!text || done) return;
+    if (/^ST[12]\./.test(text)) return finish(text);
+    const m = /^SLQ1\|(\w+)\|(\d+)\|(\d+)\|(.*)$/s.exec(text);
+    if (!m) return;
+    const [, id, i, n, chunk] = m;
+    if (id !== cur) { cur = id; parts = {}; total = +n; }
+    if (parts[+i] === undefined) { parts[+i] = chunk; UI.sfx('pop'); show(); }
+    if (Object.keys(parts).length === total) finish(Array.from({ length: total }, (_, k) => parts[k]).join(''));
+  };
+  const loop = async t => {
+    if (done) return;
+    raf = requestAnimationFrame(loop);
+    if (t - last < 120 || video.readyState < 2) return;
+    last = t;
+    try {
+      if (detector) {
+        const codes = await detector.detect(video);
+        codes.forEach(c => handle(c.rawValue));
+      } else {
+        const w = 640, h = Math.round(video.videoHeight / video.videoWidth * w) || 480;
+        canvas.width = w; canvas.height = h;
+        ctx.drawImage(video, 0, 0, w, h);
+        const r = jsQR(ctx.getImageData(0, 0, w, h).data, w, h, { inversionAttempts: 'dontInvert' });
+        if (r) handle(r.data);
+      }
+    } catch (e) { /* 這一格掃不到就算了 */ }
+  };
+  raf = requestAnimationFrame(loop);
+}
+UI.qrHandleForTest = null;
+
+async function copyText(text) {
+  try { if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; } } catch (e) { /* 改用舊方法 */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.readOnly = true; ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px';
+    document.body.appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy'); ta.remove(); return ok;
+  } catch (e) { return false; }
+}
+async function runImport(code) {
+  if (!code || code.trim().length < 20) return UI.toast('沒有找到存檔代碼');
+  try { await G.importSave(code); UI.closeSheet(); Actors.reset(); $('#view').dataset.mode = ''; UI.toast('✓ 存檔匯入成功，歡迎回來！'); boot(); }
+  catch (e) { UI.toast('代碼好像不完整，請重新複製一次'); }
+}
+document.addEventListener('change', e => {
+  if (e.target.id !== 'imp-file' || !e.target.files[0]) return;
+  const r = new FileReader();
+  r.onload = () => runImport(r.result);
+  r.readAsText(e.target.files[0]);
+});
 function syncIntro() {
   const n = $('#in-name'), t = $('#in-town');
   if (n) V.intro.name = n.value; if (t) V.intro.town = t.value;
