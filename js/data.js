@@ -29,6 +29,9 @@ const SPECIES = [
   { id: 'frog', emoji: '🐸', name: '青蛙' },
   { id: 'mouse', emoji: '🐭', name: '小老鼠' },
   { id: 'tiger', emoji: '🐯', name: '小老虎' },
+  { id: 'owl', emoji: '🦉', name: '貓頭鷹' },
+  { id: 'deer', emoji: '🦌', name: '小鹿' },
+  { id: 'hedgehog', emoji: '🦔', name: '刺蝟' },
 ];
 const SCARF_COLORS = ['#d98f6c', '#9db89a', '#8faec2', '#e3b85c', '#e8b4b0', '#b7a3c9', '#7c9c8e', '#c9a27e'];
 
@@ -128,26 +131,31 @@ const RECIPES = {
 // cat: farm 農業 / animal 畜牧 / factory 工坊 / shop 商店 / deco 裝飾
 const BUILDINGS = {
   plot:    { name: '農田',   emoji: '🌱', cat: 'farm',    lvl: 1, cost: 10, desc: '種下種子，等待收成。' },
-  coop:    { name: '雞舍',   emoji: '🐔', cat: 'animal',  lvl: 2, cost: 150, max: 3, recipes: ['egg'], roof: '#e3b85c', desc: '餵小麥，咕咕下蛋。' },
-  cowbarn: { name: '乳牛小屋', emoji: '🐮', cat: 'animal', lvl: 4, cost: 600, max: 3, recipes: ['milk'], roof: '#8faec2', desc: '餵玉米，產出香濃牛奶。' },
-  beehive: { name: '蜂箱',   emoji: '🐝', cat: 'animal',  lvl: 6, cost: 900, max: 3, recipes: ['honey'], roof: '#e3b85c', desc: '向日葵換一罐金黃蜂蜜。' },
-  sheepfold:{ name: '綿羊牧場', emoji: '🐑', cat: 'animal', lvl: 8, cost: 1500, max: 3, recipes: ['wool'], roof: '#e8b4b0', desc: '綿羊愛吃胡蘿蔔，長出軟綿羊毛。' },
-  mill:    { name: '風車磨坊', emoji: '🌀', cat: 'factory', lvl: 3, cost: 300, max: 1, recipes: ['flour', 'popcorn'], roof: '#c9a27e', desc: '把穀物磨成細細的粉。' },
-  bakery:  { name: '熊熊麵包坊', emoji: '🥐', cat: 'factory', lvl: 4, cost: 700, max: 1, recipes: ['cookie', 'bread', 'pancake', 'cake', 'pie'], roof: '#d98f6c', desc: '小鎮清晨最香的地方。' },
-  dairy:   { name: '牛奶工坊', emoji: '🧀', cat: 'factory', lvl: 5, cost: 1000, max: 1, recipes: ['cheese', 'icecream'], roof: '#8faec2', desc: '起司、冰淇淋都從這裡來。' },
-  teahouse:{ name: '午後茶屋', emoji: '🫖', cat: 'factory', lvl: 6, cost: 1400, max: 1, recipes: ['milktea', 'honeytea'], roof: '#7c9c8e', desc: '慢慢泡一壺茶。' },
-  jamhouse:{ name: '果醬小屋', emoji: '🍓', cat: 'factory', lvl: 7, cost: 1800, max: 1, recipes: ['jam', 'ketchup', 'juice'], roof: '#e8b4b0', desc: '把季節裝進玻璃罐。' },
-  florist: { name: '花草店',   emoji: '🌷', cat: 'factory', lvl: 8, cost: 2000, max: 1, recipes: ['bouquet'], roof: '#b7a3c9', desc: '包一束送給喜歡的人。' },
-  textile: { name: '織布工房', emoji: '🪡', cat: 'factory', lvl: 9, cost: 2600, max: 1, recipes: ['cloth', 'scarf', 'sweater'], roof: '#b7a3c9', desc: '一針一線織出溫度。' },
-  bistro:  { name: '森林食堂', emoji: '🍳', cat: 'factory', lvl: 11, cost: 4000, max: 1, recipes: ['sandwich', 'salad', 'pizza', 'soup'], roof: '#d98f6c', desc: '大家最愛的小館子。' },
-  shop:    { name: '文青小舖', emoji: '🏪', cat: 'shop',    lvl: 6, cost: 1200, max: 3, roof: '#9db89a', desc: '把商品擺上架，觀光客會自己來買。' },
-  home:    { name: '我的小屋', emoji: '🏡', cat: 'special', lvl: 1, cost: 0, max: 1, roof: '#d98f6c', desc: '' },
+  coop:    { name: '雞舍',   emoji: '🐔', cat: 'animal',  lvl: 2, cost: 150, pop: 0, max: 3, recipes: ['egg'], roof: '#e3b85c', desc: '餵小麥，咕咕下蛋。' },
+  cowbarn: { name: '乳牛小屋', emoji: '🐮', cat: 'animal', lvl: 4, cost: 600, pop: 12, max: 3, recipes: ['milk'], roof: '#8faec2', desc: '餵玉米，產出香濃牛奶。' },
+  beehive: { name: '蜂箱',   emoji: '🐝', cat: 'animal',  lvl: 6, cost: 900, pop: 20, max: 3, recipes: ['honey'], roof: '#e3b85c', desc: '向日葵換一罐金黃蜂蜜。' },
+  sheepfold:{ name: '綿羊牧場', emoji: '🐑', cat: 'animal', lvl: 8, cost: 1500, pop: 36, max: 3, recipes: ['wool'], roof: '#e8b4b0', desc: '綿羊愛吃胡蘿蔔，長出軟綿羊毛。' },
+  mill:    { name: '風車磨坊', emoji: '🌀', cat: 'factory', lvl: 3, cost: 300, pop: 5, max: 1, recipes: ['flour', 'popcorn'], roof: '#c9a27e', desc: '把穀物磨成細細的粉。' },
+  bakery:  { name: '熊熊麵包坊', emoji: '🥐', cat: 'factory', lvl: 4, cost: 700, pop: 10, max: 1, recipes: ['cookie', 'bread', 'pancake', 'cake', 'pie'], roof: '#d98f6c', desc: '小鎮清晨最香的地方。' },
+  dairy:   { name: '牛奶工坊', emoji: '🧀', cat: 'factory', lvl: 5, cost: 1000, pop: 18, max: 1, recipes: ['cheese', 'icecream'], roof: '#8faec2', desc: '起司、冰淇淋都從這裡來。' },
+  teahouse:{ name: '午後茶屋', emoji: '🫖', cat: 'factory', lvl: 6, cost: 1400, pop: 25, max: 1, recipes: ['milktea', 'honeytea'], roof: '#7c9c8e', desc: '慢慢泡一壺茶。' },
+  jamhouse:{ name: '果醬小屋', emoji: '🍓', cat: 'factory', lvl: 7, cost: 1800, pop: 32, max: 1, recipes: ['jam', 'ketchup', 'juice'], roof: '#e8b4b0', desc: '把季節裝進玻璃罐。' },
+  florist: { name: '花草店',   emoji: '🌷', cat: 'factory', lvl: 8, cost: 2000, pop: 40, max: 1, recipes: ['bouquet'], roof: '#b7a3c9', desc: '包一束送給喜歡的人。' },
+  textile: { name: '織布工房', emoji: '🪡', cat: 'factory', lvl: 9, cost: 2600, pop: 50, max: 1, recipes: ['cloth', 'scarf', 'sweater'], roof: '#b7a3c9', desc: '一針一線織出溫度。' },
+  bistro:  { name: '森林食堂', emoji: '🍳', cat: 'factory', lvl: 11, cost: 4000, pop: 70, max: 1, recipes: ['sandwich', 'salad', 'pizza', 'soup'], roof: '#d98f6c', desc: '大家最愛的小館子。' },
+  shop:    { name: '文青小舖', emoji: '🏪', cat: 'shop',    lvl: 6, cost: 1200, pop: 15, max: 3, roof: '#9db89a', desc: '把商品擺上架，觀光客會自己來買。' },
+  home:    { name: '我的小屋', emoji: '🏡', cat: 'special', lvl: 1, cost: 0, max: 1, roof: '#d98f6c', res: 4, desc: '' },
+  // 住宅：提供人口，人口夠了才能蓋更大的工坊
+  cottage: { name: '小木屋',   emoji: '🏠', cat: 'house', lvl: 1,  cost: 120,  res: 6,  roof: '#e3b85c', wall: '#ecd3a8', desc: '溫暖的小木屋，可以住 6 位居民。' },
+  brick:   { name: '紅磚屋',   emoji: '🧱', cat: 'house', lvl: 5,  cost: 650,  res: 15, roof: '#8faec2', wall: '#dba488', desc: '結實的紅磚屋，可以住 15 位居民。' },
+  townhouse:{ name: '雙層洋房', emoji: '🏘️', cat: 'house', lvl: 10, cost: 2200, res: 35, roof: '#b7a3c9', wall: '#fff4e2', tall: 1, desc: '有陽台的兩層樓房，可以住 35 位居民。' },
+  villa:   { name: '花園別墅', emoji: '🏰', cat: 'house', lvl: 16, cost: 6500, res: 75, roof: '#7c9c8e', wall: '#f6ead8', tall: 1, desc: '附花園的大別墅，可以住 75 位居民。' },
 };
 
 /* 裝飾：價格與繁榮度 */
 const DECOS = {
-  tree:     { name: '小樹',     emoji: '🌳', lvl: 1,  cost: 40,   pros: 2 },
-  pine:     { name: '松樹',     emoji: '🌲', lvl: 2,  cost: 60,   pros: 3 },
+  tree:     { name: '小樹林',     emoji: '🌳', lvl: 1,  cost: 40,   pros: 2 },
+  pine:     { name: '松樹林',     emoji: '🌲', lvl: 2,  cost: 60,   pros: 3 },
   tulip:    { name: '鬱金香花圃', emoji: '🌷', lvl: 1, cost: 80,   pros: 4 },
   bench:    { name: '木頭長椅', emoji: '🪑', lvl: 3,  cost: 150,  pros: 6 },
   mailbox:  { name: '紅色郵筒', emoji: '📮', lvl: 4,  cost: 180,  pros: 7 },
@@ -165,16 +173,16 @@ const DECOS = {
 
 /* 居民 */
 const VILLAGERS = {
-  bear:    { name: '熊阿嬤',   emoji: '🐻', likes: ['bread', 'honey', 'cookie', 'pie'], line: '孩子，肚子餓了就來阿嬤這裡。' },
-  bunny:   { name: '兔兔小米', emoji: '🐰', likes: ['carrot', 'strawberry', 'salad', 'cake'], line: '今天的胡蘿蔔也好甜喔！' },
-  cat:     { name: '拿鐵貓',   emoji: '🐱', likes: ['milk', 'milktea', 'cheese', 'icecream'], line: '咖啡要慢慢喝，日子也是。' },
-  fox:     { name: '狐狸阿凡', emoji: '🦊', likes: ['grape', 'juice', 'pizza', 'sandwich'], line: '市場這種東西啊，有漲就有跌。' },
-  penguin: { name: '企鵝波波', emoji: '🐧', likes: ['icecream', 'soup', 'scarf'], line: '存錢就像堆雪人，一點一點就會變大。' },
-  owl:     { name: '貓頭鷹教授', emoji: '🦉', likes: ['tea', 'honeytea', 'bouquet', 'cloth'], line: '夜晚是讀詩的好時光。' },
-  deer:    { name: '小鹿露露', emoji: '🦌', likes: ['greens', 'bouquet', 'jam', 'sunflower'], line: '森林邊的花開了，你看到了嗎？' },
-  frog:    { name: '青蛙阿呱', emoji: '🐸', likes: ['corn', 'popcorn', 'ketchup', 'tomato'], line: '呱！下雨天最適合吃爆米花！' },
-  hedgehog:{ name: '刺蝟栗栗', emoji: '🦔', likes: ['pumpkin', 'potato', 'pie', 'sweater'], line: '我…我想要一件暖暖的毛衣。' },
-  panda:   { name: '熊貓圓圓', emoji: '🐼', likes: ['pancake', 'cake', 'milktea', 'wheat'], line: '吃飽飽，睡好好，就是最棒的一天。' },
+  bear:    { name: '熊阿嬤',   emoji: '🐻', sp: 'bear', scarf: '#9db89a', likes: ['bread', 'honey', 'cookie', 'pie'], line: '孩子，肚子餓了就來阿嬤這裡。' },
+  bunny:   { name: '兔兔小米', emoji: '🐰', sp: 'rabbit', scarf: '#e8b4b0', likes: ['carrot', 'strawberry', 'salad', 'cake'], line: '今天的胡蘿蔔也好甜喔！' },
+  cat:     { name: '拿鐵貓',   emoji: '🐱', sp: 'cat', scarf: '#8faec2', likes: ['milk', 'milktea', 'cheese', 'icecream'], line: '咖啡要慢慢喝，日子也是。' },
+  fox:     { name: '狐狸阿凡', emoji: '🦊', sp: 'fox', scarf: '#7c9c8e', likes: ['grape', 'juice', 'pizza', 'sandwich'], line: '市場這種東西啊，有漲就有跌。' },
+  penguin: { name: '企鵝波波', emoji: '🐧', sp: 'penguin', scarf: '#d98f6c', likes: ['icecream', 'soup', 'scarf'], line: '存錢就像堆雪人，一點一點就會變大。' },
+  owl:     { name: '貓頭鷹教授', emoji: '🦉', sp: 'owl', scarf: '#b7a3c9', likes: ['tea', 'honeytea', 'bouquet', 'cloth'], line: '夜晚是讀詩的好時光。' },
+  deer:    { name: '小鹿露露', emoji: '🦌', sp: 'deer', scarf: '#e3b85c', likes: ['greens', 'bouquet', 'jam', 'sunflower'], line: '森林邊的花開了，你看到了嗎？' },
+  frog:    { name: '青蛙阿呱', emoji: '🐸', sp: 'frog', scarf: '#e8b4b0', likes: ['corn', 'popcorn', 'ketchup', 'tomato'], line: '呱！下雨天最適合吃爆米花！' },
+  hedgehog:{ name: '刺蝟栗栗', emoji: '🦔', sp: 'hedgehog', scarf: '#d98f6c', likes: ['pumpkin', 'potato', 'pie', 'sweater'], line: '我…我想要一件暖暖的毛衣。' },
+  panda:   { name: '熊貓圓圓', emoji: '🐼', sp: 'panda', scarf: '#8faec2', likes: ['pancake', 'cake', 'milktea', 'wheat'], line: '吃飽飽，睡好好，就是最棒的一天。' },
 };
 
 /* 股市：小鎮上市公司 */
@@ -263,12 +271,14 @@ const QUESTS = [
   { id: 'q4', text: '蓋一座雞舍（2 級解鎖）', type: 'own', key: 'coop', n: 1, r: { coins: 60, xp: 10 } },
   { id: 'q5', text: '收集 3 顆雞蛋', type: 'stat', key: 'p_egg', n: 3, r: { coins: 60, xp: 12 } },
   { id: 'q6', text: '在市場賣出 10 件商品', type: 'stat', key: 'sold', n: 10, r: { coins: 80, xp: 12 } },
+  { id: 'q6b', text: '蓋一間小木屋，迎接新居民', type: 'own', key: 'cottage', n: 1, r: { coins: 80, xp: 12 } },
   { id: 'q7', text: '蓋一座風車磨坊（3 級解鎖）', type: 'own', key: 'mill', n: 1, r: { coins: 100, xp: 15, clovers: 1 } },
   { id: 'q8', text: '做出 5 份麵粉', type: 'stat', key: 'p_flour', n: 5, r: { coins: 100, xp: 15 } },
   { id: 'q9', text: '擴建一次土地', type: 'stat', key: 'expand', n: 1, r: { coins: 120, xp: 20 } },
   { id: 'q10', text: '蓋熊熊麵包坊並烤 3 條麵包', type: 'stat', key: 'p_bread', n: 3, r: { coins: 150, xp: 25 } },
   { id: 'q11', text: '在企鵝銀行活存 300 金幣', type: 'stat', key: 'deposited', n: 300, r: { coins: 100, xp: 20, clovers: 1 } },
   { id: 'q12', text: '買進第一張股票', type: 'stat', key: 'stockBuys', n: 1, r: { coins: 100, xp: 20 } },
+  { id: 'q12b', text: '小鎮人口達到 30 人', type: 'popn', n: 30, r: { coins: 150, xp: 25, clovers: 1 } },
   { id: 'q13', text: '小鎮繁榮度達到 40', type: 'pros', n: 40, r: { coins: 200, xp: 30 } },
   { id: 'q14', text: '開一間文青小舖', type: 'own', key: 'shop', n: 1, r: { coins: 200, xp: 30, clovers: 2 } },
   { id: 'q15', text: '小舖賣出 20 件商品', type: 'stat', key: 'shopSold', n: 20, r: { coins: 300, xp: 40 } },
@@ -318,6 +328,8 @@ const ACHIEVEMENTS = [
   { id: 'a_d1', name: '連續七天', desc: '連續登入 7 天', type: 'stat', key: 'bestStreak', n: 7, clovers: 3 },
   { id: 'a_d2', name: '日日是好日', desc: '連續登入 30 天', type: 'stat', key: 'bestStreak', n: 30, clovers: 10 },
   { id: 'a_w1', name: '四季輪轉', desc: '經歷 4 個季節', type: 'stat', key: 'seasons', n: 4, clovers: 3 },
+  { id: 'a_pp1', name: '熱鬧的小鎮', desc: '人口達到 100 人', type: 'popn', n: 100, clovers: 3 },
+  { id: 'a_pp2', name: '小小城市', desc: '人口達到 300 人', type: 'popn', n: 300, clovers: 6 },
   { id: 'a_x1', name: '收藏家', desc: '圖鑑收集 30 種物品', type: 'dexn', n: 30, clovers: 3 },
 ];
 

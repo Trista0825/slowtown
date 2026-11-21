@@ -133,6 +133,7 @@ G.expand = function () {
   return true;
 };
 
+G.population = () => S.tiles.reduce((a, t) => a + (t && t.t === 'bld' && BUILDINGS[t.id].res ? BUILDINGS[t.id].res * (t.lvl || 1) : 0), 0);
 G.build = function (i, id) {
   if (S.tiles[i]) return 'occupied';
   if (id === 'plot') {
@@ -148,11 +149,13 @@ G.build = function (i, id) {
   const b = BUILDINGS[id];
   if (S.level < b.lvl) return 'lvl';
   if (b.max && G.count(id) >= b.max) return 'max';
+  if (b.pop && G.population() < b.pop) return 'pop';
   const c = G.bldCost(id);
   if (S.coins < c) return 'coins';
   S.coins -= c;
   S.tiles[i] = id === 'shop' ? { t: 'bld', id, lvl: 1, shelf: [null, null, null], cash: 0, last: now(), ptr: 0 }
-                             : { t: 'bld', id, lvl: 1, q: [] };
+             : b.cat === 'house' ? { t: 'bld', id, lvl: 1 }
+             : { t: 'bld', id, lvl: 1, q: [] };
   G.addXP(Math.round(b.cost / 20));
   return true;
 };
@@ -322,7 +325,7 @@ G.prosperity = function () {
   });
   return p;
 };
-G.shopInterval = () => Math.round(75000 / (1 + G.prosperity() / 120));
+G.shopInterval = () => Math.round(75000 / (1 + G.prosperity() / 120 + G.population() / 200));
 G.shopPrice = id => Math.max(1, Math.round(ITEMS[id].base * 1.3 * (G.isFest(id) ? 1.2 : 1)));
 G.shopTick = function () {
   const iv = G.shopInterval(), tnow = now();
@@ -688,6 +691,7 @@ G.condValue = function (c) {
     case 'net': return G.netWorth();
     case 'friend': return G.maxHearts();
     case 'level': return S.level;
+    case 'popn': return G.population();
     case 'dex': return Object.keys(S.dex).length;
     case 'dexn': return Object.keys(S.dex).length;
   }

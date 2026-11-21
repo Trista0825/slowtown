@@ -1,6 +1,6 @@
 /* 慢慢小鎮 Service Worker：離線可玩 */
-const CACHE = 'slowtown-v1';
-const ASSETS = ['./', './index.html', './css/style.css', './js/data.js', './js/engine.js', './js/ui.js',
+const CACHE = 'slowtown-v4';
+const ASSETS = ['./', './index.html', './css/style.css', './js/data.js', './js/engine.js', './js/art.js', './js/ui.js',
   './manifest.webmanifest', './icons/icon.svg', './icons/icon-180.png', './icons/icon-192.png', './icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {

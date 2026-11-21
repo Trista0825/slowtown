@@ -111,7 +111,7 @@ UI.confetti = function (set = ['🎉', '✨', '🌸', '⭐', '🍀']) {
   }
 };
 const FAIL = {
-  coins: '金幣不夠喔 🪙', lvl: '等級還不夠，再努力一下！', max: '已經達到數量上限了', full: '倉庫滿了！先賣掉一些或擴建倉庫 📦',
+  coins: '金幣不夠喔 🪙', pop: '人口不足，先蓋住宅讓居民搬進來 🏠', lvl: '等級還不夠，再努力一下！', max: '已經達到數量上限了', full: '倉庫滿了！先賣掉一些或擴建倉庫 📦',
   mat: '材料不足', slots: '排程已滿，先等等或升級', clovers: '四葉草不夠 🍀', cap: '超過額度上限', busy: '還在使用中，先清空再操作',
   home: '這是你的家，不能拆喔', min: '最少 100 金幣', notready: '還沒成熟～',
 };
@@ -133,7 +133,7 @@ UI.confirm = function (text, yes, okLabel = '確定') {
 UI.levelUp = function (lvl) {
   const un = unlocksAt(lvl);
   UI.sfx('up'); UI.confetti();
-  UI.modal(`<span class="bigic">${sp().emoji}</span><h2>升到 ${lvl} 級了！</h2>
+  UI.modal(`<span class="bigic"><span class="face xl">${animalSVG(S.player.species, S.player.color)}</span></span><h2>升到 ${lvl} 級了！</h2>
     <div class="muted">獲得 🪙${30 * lvl} 與 🍀1</div>
     ${un.length ? `<div class="mt12 muted">新解鎖</div><div class="unlock-list">${un.map(u => `<span class="chip">${u}</span>`).join('')}</div>` : ''}
     ${JOURNAL.find(j => j.lvl === lvl) ? '<div class="mt12 tiny">📔 日記新增了一頁</div>' : ''}
@@ -169,7 +169,7 @@ function head(ic, title, sub = '') {
 function renderHUD() {
   const si = G.seasonInfo();
   const need = G.xpNeed(S.level);
-  return `<div class="avatar" style="background:${S.player.color}" data-act="home">${sp().emoji}<span class="lv">${S.level}</span></div>
+  return `<div class="avatar" style="background:${shade(S.player.color, 0.55)}" data-act="home">${animalSVG(S.player.species, S.player.color, { head: true })}<span class="lv">${S.level}</span></div>
   <div class="hud-mid"><div class="hud-name">${esc(S.player.name)} <small>· ${esc(S.player.town)}</small></div>
   <div class="xpbar"><i style="width:${S.xp / need * 100}%"></i></div></div>
   <div class="hud-pills"><span class="pill">🪙 ${fmtC(S.coins)}</span><span class="pill">🍀 ${S.clovers}</span>
@@ -212,29 +212,41 @@ function questMini() {
     <div class="bar mustard"><i style="width:${Math.floor(Math.min(1, v / n) * 100)}%"></i></div></div>
     ${done ? `<button class="btn terra sm" data-act="claimQuest">領取</button>` : `<span class="tiny">🪙${q.r.coins}${q.r.clovers ? ' 🍀' + q.r.clovers : ''}</span>`}</div>`;
 }
+const face = (spId, color, cls = '') => `<span class="face ${cls}">${animalSVG(spId, color, { head: true })}</span>`;
+const pface = (cls = '') => face(S.player.species, S.player.color, cls);
+const vface = (npc, cls = '') => face(VILLAGERS[npc].sp, VILLAGERS[npc].scarf, cls);
+function objHTML(t) {
+  if (t.t === 'deco') {
+    const d = DECOS[t.id];
+    if (['tree', 'pine', 'tulip', 'rose'].includes(t.id)) return `<div class="obj tree">${clumpSVG(t.id, G.seasonInfo().s.id)}</div>`;
+    return `<div class="obj emo"><span class="gshadow"></span><span class="deco${d.glow ? ' glow' : ''}">${d.emoji}</span></div>`;
+  }
+  const b = BUILDINGS[t.id];
+  const kind = BLD_KIND[t.id] || 'house';
+  return `<div class="obj bld${b.tall ? ' tall' : ''}">${houseSVG(kind, b.roof || '#d98f6c', { wall: b.wall, tall: b.tall })}</div>`;
+}
 function tileHTML(i) {
   const t = S.tiles[i];
+  const row = Math.floor(i / COLS), col = i % COLS;
   const sel = V.moveMode && V.moveFrom === i ? ' sel' : '';
-  if (!t) return `<div class="tile empty-t${sel}" data-act="tile" data-i="${i}"><span class="plus">＋</span></div>`;
+  const cls = `tile${(row + col) % 2 ? ' alt' : ''}${sel}`;
+  const z = `style="z-index:${row * 10 + 10}"`;
+  if (!t) return `<div class="${cls} empty-t" ${z} data-act="tile" data-i="${i}"><span class="plus">＋</span></div>`;
   if (t.t === 'plot') {
-    let inner = '';
     if (t.crop) {
       const ready = G.cropReady(t), p = G.cropProg(t);
       const st = ready ? 2 : p < 0.45 ? 0 : 1;
-      inner = `<span class="crop s${st}">${st === 0 ? '🌱' : ie(t.crop)}</span>`;
-      return `<div class="tile${sel}" data-act="tile" data-i="${i}"><div class="plot${t.w ? ' wet' : ''}">${inner}</div>
+      const e = st === 0 ? '🌱' : ie(t.crop);
+      return `<div class="${cls}" ${z} data-act="tile" data-i="${i}"><div class="plot${t.w ? ' wet' : ''}"></div>
+        <div class="crops s${st}"><span>${e}</span><span>${e}</span><span>${e}</span></div>
         ${ready ? '<span class="ready-spark">✨</span>' : `<div class="prog">${pg(t.at, t.at + t.dur)}</div>`}${t.w && !ready ? '<span class="drop">💧</span>' : ''}</div>`;
     }
-    return `<div class="tile${sel}" data-act="tile" data-i="${i}"><div class="plot"></div></div>`;
+    return `<div class="${cls}" ${z} data-act="tile" data-i="${i}"><div class="plot"></div></div>`;
   }
-  if (t.t === 'deco') {
-    const d = DECOS[t.id];
-    return `<div class="tile${sel}" data-act="tile" data-i="${i}"><span class="deco${d.glow ? ' glow' : ''}">${d.emoji}</span></div>`;
-  }
+  if (t.t === 'deco') return `<div class="${cls}" ${z} data-act="tile" data-i="${i}">${objHTML(t)}</div>`;
   const b = BUILDINGS[t.id];
-  let badge = '', prog = '', face = b.emoji;
-  if (t.id === 'home') face = sp().emoji;
-  else if (t.q) {
+  let badge = '', prog = '';
+  if (t.q) {
     const r = G.readyCount(t);
     if (r) badge = `<span class="badge ok">${r}</span>`;
     else if (!t.q.length) badge = `<span class="badge idle">zz</span>`;
@@ -243,20 +255,18 @@ function tileHTML(i) {
     if (t.cash >= 1) badge = `<span class="badge coin">🪙</span>`;
     else if (!t.shelf.some(s => s)) badge = `<span class="badge idle">空</span>`;
   }
-  return `<div class="tile${sel}" data-act="tile" data-i="${i}"><div class="house"><div class="roof" style="background:${b.roof || 'var(--terra)'}"></div><div class="walls">${face}</div></div>
-    <div class="bld-label">${t.id === 'home' ? esc(S.player.name) + '的家' : b.name}${t.lvl > 1 ? ' ★' + t.lvl : ''}</div>${badge}${prog}</div>`;
+  const sign = t.id === 'home' || b.cat === 'house' ? '' : `<span class="sign">${b.emoji}</span>`;
+  return `<div class="${cls}" ${z} data-act="tile" data-i="${i}">${objHTML(t)}${sign}
+    <div class="bld-label${t.id === 'home' ? ' home' : ''}">${t.id === 'home' ? esc(S.player.name) + '的家' : b.name}${t.lvl > 1 ? ' ★' + t.lvl : ''}</div>${badge}${prog}</div>`;
 }
-function renderTown() {
+function townHead() {
   const si = G.seasonInfo();
-  const qi = Math.floor((now() / 86400000)) % QUOTES.length;
   let readyCrops = 0, readyB = 0, emptyPlots = 0;
   S.tiles.forEach(t => {
     if (!t) return;
     if (t.t === 'plot') { if (G.cropReady(t)) readyCrops++; else if (!t.crop) emptyPlots++; }
     if (t.q) readyB += G.readyCount(t);
   });
-  const cells = [];
-  for (let i = 0; i < S.rows * COLS; i++) cells.push(tileHTML(i));
   const seed = S.lastSeed && S.level >= CROPS[S.lastSeed].lvl ? S.lastSeed : 'wheat';
   return `
   <div class="fest-banner"><span style="font-size:20px">${si.s.emoji}</span><div class="grow"><b>${si.s.fest}</b> <span class="tiny">第 ${si.year} 年 · 還有 ${cd(si.endsAt)}</span>
@@ -268,14 +278,104 @@ function renderTown() {
     <button class="btn ${readyB ? 'mustard' : 'ghost'} sm" data-act="collectAll">📦 收集工坊${readyB ? ` (${readyB})` : ''}</button>
     <button class="btn ${V.moveMode ? 'blue' : 'ghost'} sm" data-act="moveMode">${V.moveMode ? '✓ 完成移動' : '✋ 移動'}</button>
   </div>
-  ${V.moveMode ? `<div class="tiny mb8 center">${V.moveFrom === null ? '點選要移動的建築或裝飾' : '點選一塊空地放下'}</div>` : ''}
-  <div class="mapwrap"><div class="map">${cells.join('')}</div><div class="night-layer"></div></div>
-  ${S.rows < MAX_ROWS ? `<div class="expand-card"><div style="font-size:22px">🚧</div><div><b>擴建土地</b>（多 6 格）</div>
+  <div class="town-stats"><span>👥 人口 <b>${G.population()}</b></span><span>✿ 繁榮 <b>${G.prosperity()}</b></span><span>🏪 客人每 ${Math.round(G.shopInterval() / 1000)} 秒</span></div>
+  ${V.moveMode ? `<div class="tiny mb8 center">${V.moveFrom === null ? '點選要移動的建築或裝飾' : '點選一塊空地放下'}</div>` : ''}`;
+}
+function townMap() {
+  const cells = [];
+  for (let i = 0; i < S.rows * COLS; i++) cells.push(tileHTML(i));
+  return cells.join('');
+}
+function townFoot() {
+  const qi = Math.floor((now() / 86400000)) % QUOTES.length;
+  return `${S.rows < MAX_ROWS ? `<div class="expand-card"><div style="font-size:22px">🚧</div><div><b>擴建土地</b>（多 6 格）</div>
     <div class="tiny">需要 Lv.${G.expandLvl()} · 🪙${fmt(G.expandCost())}</div>
     <button class="btn sm mt8 ${S.level < G.expandLvl() ? 'off' : ''}" data-act="expand">擴建</button></div>` : '<div class="expand-card">🎉 土地已全部開墾</div>'}
-  <div class="quote mt12">「${QUOTES[qi]}」</div>
-  <div class="tiny center mt8">繁榮度 ✿ ${G.prosperity()} · 小舖每 ${Math.round(G.shopInterval() / 1000)} 秒迎來一位客人</div>`;
+  <div class="quote mt12">「${QUOTES[qi]}」</div>`;
 }
+function renderTownInto(view) {
+  if (view.dataset.mode !== 'town') {
+    view.innerHTML = `<div id="t-head"></div><div class="mapwrap" id="t-wrap"><div class="map" id="t-map"></div><div class="actors" id="t-actors"></div><div class="night-layer"></div></div><div class="cliff"></div><div id="t-foot"></div>`;
+    view.dataset.mode = 'town'; view._h = null;
+  }
+  setHTML($('#t-head'), townHead());
+  const m = $('#t-map'), before = m._h;
+  setHTML(m, townMap());
+  setHTML($('#t-foot'), townFoot());
+  Actors.sync(before !== m._h);
+}
+
+/* ───────── 會走路的居民 ───────── */
+const Actors = {
+  list: [], last: 0,
+  tileEl(i) { return document.querySelector(`#t-map .tile[data-i="${i}"]`); },
+  make(a) {
+    const el = document.createElement('div');
+    el.className = 'actor' + (a.npc ? ' npc' : ' me');
+    if (a.npc) { el.dataset.act = 'chat'; el.dataset.v = a.npc; }
+    el.innerHTML = `<div class="bubble"></div><div class="body">${animalSVG(a.sp, a.color)}</div>`;
+    a.el = el; return el;
+  },
+  freeTiles() {
+    const out = [];
+    for (let i = 0; i < S.rows * COLS; i++) if (!S.tiles[i] || (S.tiles[i].t === 'plot' && !S.tiles[i].crop)) out.push(i);
+    return out;
+  },
+  sync(mapChanged) {
+    const box = $('#t-actors'); if (!box) return;
+    if (!this.list.length || !box.children.length) {
+      box.innerHTML = '';
+      const homeI = S.tiles.findIndex(t => t && t.id === 'home');
+      const start = (homeI >= 0 ? homeI : 0) + COLS;
+      this.list = [{ id: 'me', sp: S.player.species, color: S.player.color, i: Math.min(start, S.rows * COLS - 1) }];
+      const n = Math.min(3, 1 + Math.floor(S.level / 4));
+      const ids = Object.keys(VILLAGERS).sort(() => Math.random() - 0.5).slice(0, n);
+      const free = this.freeTiles();
+      ids.forEach(v => this.list.push({ id: v, npc: v, sp: VILLAGERS[v].sp, color: VILLAGERS[v].scarf, i: free.length ? pick(free) : 0 }));
+      this.list.forEach(a => box.appendChild(this.make(a)));
+      this.list.forEach(a => this.place(a, a.i, false));
+      return;
+    }
+    const me = this.list[0];
+    if (me.sp !== S.player.species || me.color !== S.player.color) {
+      me.sp = S.player.species; me.color = S.player.color; me.el.querySelector('.body').innerHTML = animalSVG(me.sp, me.color);
+    }
+    if (mapChanged) this.list.forEach(a => this.place(a, Math.min(a.i, S.rows * COLS - 1), false));
+  },
+  place(a, i, walk = true) {
+    const t = this.tileEl(i); if (!t) return;
+    const w = t.offsetWidth * 0.42, h = w * 1.28;
+    const x = t.offsetLeft + t.offsetWidth * (a.npc ? 0.66 : 0.34) - w / 2;
+    const y = t.offsetTop + t.offsetHeight * 1.02 - h;
+    const row = Math.floor(i / COLS);
+    const dist = Math.hypot(x - (a.x || x), y - (a.y || y));
+    const dur = walk ? Math.min(2.6, 0.25 + dist / 90) : 0;
+    if (a.x !== undefined && x < a.x - 2) a.el.classList.add('flip'); else if (a.x !== undefined && x > a.x + 2) a.el.classList.remove('flip');
+    a.el.style.width = w + 'px'; a.el.style.height = h + 'px';
+    a.el.style.transition = `transform ${dur}s linear`;
+    a.el.style.transform = `translate(${x}px, ${y}px)`;
+    a.el.style.zIndex = row * 10 + 15;
+    a.x = x; a.y = y; a.i = i;
+    if (walk && dur > 0) { a.el.classList.add('walk'); clearTimeout(a.tm); a.tm = setTimeout(() => a.el.classList.remove('walk'), dur * 1000); }
+  },
+  walkMe(i) { const me = this.list[0]; if (me && me.el) this.place(me, i, true); },
+  say(a, text, ms = 2600) {
+    const b = a.el.querySelector('.bubble'); b.innerHTML = text; a.el.classList.add('talk');
+    clearTimeout(a.st); a.st = setTimeout(() => a.el.classList.remove('talk'), ms);
+  },
+  tick() {
+    if (V.tab !== 'town' || !this.list.length || document.hidden) return;
+    const free = this.freeTiles();
+    this.list.forEach(a => {
+      if (!a.npc || Math.random() > 0.22 || !free.length) return;
+      const r = Math.random();
+      if (r < 0.75) this.place(a, pick(free), true);
+      else this.say(a, pick(['♪', '💭', '☕', '🌸', '✨', '…zZ', '😊', ie(pick(VILLAGERS[a.npc].likes))]));
+    });
+  },
+  reset() { this.list = []; },
+};
+window.addEventListener('resize', () => { if (V.tab === 'town') Actors.list.forEach(a => Actors.place(a, a.i, false)); });
 
 /* 地圖點擊 */
 function tapTile(i) {
@@ -290,6 +390,7 @@ function tapTile(i) {
     return refresh();
   }
   const t = S.tiles[i];
+  Actors.walkMe(i);
   if (!t) return UI.openSheet(() => buildSheet(i));
   if (t.t === 'plot') {
     if (!t.crop) return UI.openSheet(() => seedSheet(i));
@@ -304,6 +405,7 @@ function tapTile(i) {
   }
   if (t.t === 'deco') return UI.openSheet(() => decoSheet(i));
   if (t.id === 'home') return UI.openSheet(homeSheet);
+  if (BUILDINGS[t.id].cat === 'house') return UI.openSheet(() => houseSheet(i));
   if (t.id === 'shop') {
     const c = G.collectCash(i);
     if (c) { UI.sfx('coin'); UI.float(`+${c} 🪙`); }
@@ -347,24 +449,27 @@ function cropSheet(i) {
 
 /* 建造 */
 function buildSheet(i) {
-  const cats = [['farm', '🌱 農田'], ['animal', '🐔 畜牧'], ['factory', '🏭 工坊'], ['shop', '🏪 商店'], ['deco', '🌷 裝飾']];
+  const cats = [['farm', '🌱 農田'], ['house', '🏠 住宅'], ['animal', '🐔 畜牧'], ['factory', '🏭 工坊'], ['shop', '🏪 商店'], ['deco', '🌷 裝飾']];
   let body = '';
   if (V.buildCat === 'deco') {
     body = Object.entries(DECOS).map(([id, d]) => {
       const lock = S.level < d.lvl;
-      return `<div class="opt${lock ? ' lock' : ''}" data-act="build" data-i="${i}" data-id="${id}"><span class="e">${d.emoji}</span><div class="n">${d.name}</div>
+      const pic = ['tree', 'pine', 'tulip', 'rose'].includes(id) ? `<span class="pic">${clumpSVG(id, G.seasonInfo().s.id)}</span>` : `<span class="e">${d.emoji}</span>`;
+      return `<div class="opt${lock ? ' lock' : ''}" data-act="build" data-i="${i}" data-id="${id}">${pic}<div class="n">${d.name}</div>
         <div class="s">${lock ? `Lv.${d.lvl} 解鎖` : `🪙${fmt(d.cost)}`}</div><div class="s">繁榮 +${d.pros}</div></div>`;
     }).join('');
   } else {
     body = Object.entries(BUILDINGS).filter(([, b]) => b.cat === V.buildCat).map(([id, b]) => {
-      const lock = S.level < b.lvl, cnt = G.count(id), mx = b.max && cnt >= b.max;
-      return `<div class="opt${lock || mx ? ' lock' : ''}" data-act="build" data-i="${i}" data-id="${id}"><span class="e">${b.emoji}</span><div class="n">${b.name}</div>
+      const lock = S.level < b.lvl, cnt = G.count(id), mx = b.max && cnt >= b.max, popLack = b.pop && G.population() < b.pop;
+      const pic = id === 'plot' ? `<span class="e">${b.emoji}</span>` : `<span class="pic">${houseSVG(BLD_KIND[id] || 'house', b.roof || '#d98f6c', { wall: b.wall, tall: b.tall })}<i>${b.cat === 'house' ? '' : b.emoji}</i></span>`;
+      return `<div class="opt${lock || mx ? ' lock' : ''}" data-act="build" data-i="${i}" data-id="${id}">${pic}<div class="n">${b.name}</div>
         <div class="s">${lock ? `Lv.${b.lvl} 解鎖` : mx ? '已達上限' : `🪙${fmt(G.bldCost(id))}`}</div>
+        ${b.res ? `<div class="s">👥 +${b.res} 人</div>` : b.pop ? `<div class="s ${popLack ? 'down' : ''}">需要人口 ${b.pop}</div>` : ''}
         <div class="s">${b.max ? `${cnt}/${b.max} 座` : id === 'plot' ? `已有 ${G.plotCount()} 塊` : ''}</div>
         <div class="tiny mt8">${b.desc}</div></div>`;
     }).join('');
   }
-  return head('🔨', '要蓋什麼呢？', '點空地就能建造，之後可以用「移動」重新擺放') +
+  return head('🔨', '要蓋什麼呢？', `目前人口 👥${G.population()} · 蓋住宅可以增加人口`) +
     `<div class="tabs">${cats.map(([id, nm]) => `<button class="${V.buildCat === id ? 'on' : ''}" data-act="buildCat" data-c="${id}">${nm}</button>`).join('')}</div>
     <div class="grid3">${body}</div>`;
 }
@@ -395,7 +500,7 @@ function bldSheet(i) {
         missRaw ? `<button class="btn ghost xs" data-act="buyMissing" data-r="${r}">🛒 補料</button>` : `<button class="btn sm off">製作</button>`}
     </div>`;
   }).join('');
-  return head(b.emoji, `${b.name} <span class="tag sage">Lv.${t.lvl}</span>`, b.desc) +
+  return head(`<span class="mini-house">${houseSVG(BLD_KIND[t.id] || 'house', b.roof || '#d98f6c', { wall: b.wall })}</span>`, `${b.name} <span class="tag sage">Lv.${t.lvl}</span>`, b.desc) +
     `<div class="card tight"><div class="between mb8"><b style="font-size:13px">生產排程 ${t.q.length}/${slots}</b>
       ${ready ? `<button class="btn terra sm" data-act="collect" data-i="${i}">收成 ${ready} 件</button>` :
       t.q.length ? `<button class="btn mustard xs" data-act="rushBld" data-i="${i}">🍀${G.rushCost(lastEnd - now())} 全部完成</button>` : ''}</div>
@@ -408,10 +513,22 @@ function bldFooter(i) {
   const canUp = t.t === 'bld' && t.id !== 'home' && t.lvl < 3;
   const upLvl = t.lvl === 1 ? 8 : 15;
   return `<div class="card tight mt12">
-    ${canUp ? `<div class="between"><div><b style="font-size:13px">升級到 Lv.${t.lvl + 1}</b><div class="tiny">${t.shelf ? '多一個貨架' : '排程 +1、速度 +15%'} · 需要 Lv.${upLvl}</div></div>
+    ${canUp ? `<div class="between"><div><b style="font-size:13px">升級到 Lv.${t.lvl + 1}</b><div class="tiny">${t.shelf ? '多一個貨架' : BUILDINGS[t.id].res ? `居民 +${BUILDINGS[t.id].res} 人` : '排程 +1、速度 +15%'} · 需要 Lv.${upLvl}</div></div>
       <button class="btn blue sm ${S.level < upLvl ? 'off' : ''}" data-act="upgrade" data-i="${i}">🪙${fmt(G.upCost(t))}</button></div>` : t.lvl >= 3 ? '<div class="tiny center">★ 已經是最高等級</div>' : ''}
     <div class="row mt8"><button class="btn ghost sm grow" data-act="startMove" data-i="${i}">✋ 移動</button>
     <button class="btn ghost sm grow" data-act="demolish" data-i="${i}">拆除（退 🪙${G.refund(i)}）</button></div></div>`;
+}
+
+/* 住宅 */
+function houseSheet(i) {
+  const t = S.tiles[i]; if (!t) { setTimeout(UI.closeSheet); return ''; }
+  const b = BUILDINGS[t.id];
+  const who = Object.keys(VILLAGERS).slice((i * 3) % 7, (i * 3) % 7 + 3);
+  return head(`<span class="mini-house">${houseSVG('house', b.roof, { wall: b.wall, tall: b.tall })}</span>`, `${b.name} <span class="tag sage">Lv.${t.lvl}</span>`, b.desc) +
+    `<div class="card tight between"><div><div class="tiny">住在這裡的居民</div><div class="bignum sm">👥 ${b.res * t.lvl} 人</div></div>
+    <div class="row">${who.map(v => vface(v, 'md')).join('')}</div></div>
+    <div class="tiny">小鎮總人口 ${G.population()} 人。人口越多，可以蓋的工坊越大，小舖的客人也越多。</div>
+    ${bldFooter(i)}`;
 }
 
 /* 小舖 */
@@ -427,7 +544,7 @@ function shopSheet(i) {
   const shelves = t.shelf.map((s, k) => s ? `<div class="list-row"><span class="e">${ie(s.id)}</span><div class="grow"><b>${it(s.id).name}</b> × ${s.n}<div class="tiny">每個 🪙${G.shopPrice(s.id)}</div></div>
       <button class="btn ghost xs" data-act="unstock" data-i="${i}" data-k="${k}">下架</button></div>`
     : `<div class="list-row"><span class="e" style="opacity:.35">🪹</span><div class="grow tiny">空貨架</div><button class="btn xs" data-act="shelfPick" data-k="${k}">＋ 上架</button></div>`).join('');
-  return head('🏪', `文青小舖 <span class="tag sage">Lv.${t.lvl}</span>`, `繁榮度 ✿${G.prosperity()} → 每 ${Math.round(G.shopInterval() / 1000)} 秒一位客人`) +
+  return head(`<span class="mini-house">${houseSVG('shop', '#9db89a')}</span>`, `文青小舖 <span class="tag sage">Lv.${t.lvl}</span>`, `繁榮度 ✿${G.prosperity()} → 每 ${Math.round(G.shopInterval() / 1000)} 秒一位客人`) +
     `<div class="card tight between"><div><div class="tiny">收銀機</div><div class="bignum sm">🪙 ${fmt(Math.floor(t.cash))}</div></div>
      <button class="btn mustard ${t.cash < 1 ? 'off' : ''}" data-act="cash" data-i="${i}">收款</button></div>
     <div class="card tight"><h3>貨架</h3>${shelves}</div>
@@ -443,19 +560,21 @@ function decoSheet(i) {
 }
 function homeSheet() {
   const days = Math.floor((now() - S.created) / 86400000) + 1;
-  return head(`<span style="font-size:38px">${sp().emoji}</span>`, esc(S.player.name), `${esc(S.player.town)} 的鎮長 · 來到小鎮第 ${days} 天`) +
+  return head(pface('lg'), esc(S.player.name), `${esc(S.player.town)} 的鎮長 · 來到小鎮第 ${days} 天`) +
     `<div class="grid2">
       <div class="card tight center"><div class="tiny">等級</div><div class="bignum sm">${S.level}</div></div>
       <div class="card tight center"><div class="tiny">總資產</div><div class="bignum sm"><span data-live="net"></span></div></div>
       <div class="card tight center"><div class="tiny">繁榮度</div><div class="bignum sm">✿ ${G.prosperity()}</div></div>
       <div class="card tight center"><div class="tiny">連續登入</div><div class="bignum sm">${S.login.streak} 天</div></div>
+      <div class="card tight center"><div class="tiny">人口</div><div class="bignum sm">👥 ${G.population()}</div></div>
+      <div class="card tight center"><div class="tiny">好友</div><div class="bignum sm">❤️ ${Object.keys(VILLAGERS).filter(v => G.hearts(v) >= 3).length}</div></div>
     </div>
     <button class="btn ghost block" data-act="editProfile">✏️ 換個造型 / 改名字</button>`;
 }
 function editSheet() {
   const p = V.edit;
   return head('✏️', '編輯角色') +
-    `<div class="species">${SPECIES.map(s => `<div class="opt${p.species === s.id ? ' sel' : ''}" data-act="editSp" data-id="${s.id}"><span class="e">${s.emoji}</span><div class="s">${s.name}</div></div>`).join('')}</div>
+    `<div class="center">${`<span class="face xl">${animalSVG(p.species, p.color)}</span>`}</div><div class="species">${SPECIES.map(s => `<div class="opt${p.species === s.id ? ' sel' : ''}" data-act="editSp" data-id="${s.id}">${face(s.id, p.color, 'md')}<div class="s">${s.name}</div></div>`).join('')}</div>
     <div class="colors mt12">${SCARF_COLORS.map(c => `<button class="${p.color === c ? 'on' : ''}" style="background:${c}" data-act="editColor" data-c="${c}"></button>`).join('')}</div>
     <div class="field"><label>名字</label><input id="ed-name" maxlength="10" value="${esc(p.name)}"></div>
     <div class="field"><label>小鎮名稱</label><input id="ed-town" maxlength="10" value="${esc(p.town)}"></div>
@@ -531,7 +650,7 @@ function renderOrders() {
     if (!o.req) return `<div class="order wait"><span style="font-size:24px">✉️</span><div class="tiny">新訂單 ${cd(o.wait)}</div></div>`;
     const v = VILLAGERS[o.npc], can = G.canFill(o);
     return `<div class="order${can ? ' ready' : ''}"><button class="x" data-act="discard" data-k="${k}">✕</button>
-      <div class="who"><span class="e">${v.emoji}</span><div>${v.name}<div class="hearts">${heartsStr(G.hearts(o.npc))}</div></div></div>
+      <div class="who">${vface(o.npc, 'md')}<div>${v.name}<div class="hearts">${heartsStr(G.hearts(o.npc))}</div></div></div>
       <div class="reqs">${o.req.map(([id, q]) => need(id, q)).join('')}</div>
       <div class="rw">🪙${fmt(o.coins)} · ⭐${o.xp} ${o.fest ? '<span class="tag fest">祭典</span>' : ''}</div>
       <button class="btn ${can ? 'terra' : 'ghost off'} sm" data-act="fill" data-k="${k}">交貨</button></div>`;
@@ -709,7 +828,7 @@ function renderFolks() {
   return `<div class="tiny mb8">完成居民的訂單可以增加友情，每多一顆心就會收到一封信和 🍀。</div>` +
     Object.entries(VILLAGERS).map(([id, v]) => {
       const h = G.hearts(id);
-      return `<div class="card tight row" data-act="letter" data-id="${id}"><span style="font-size:36px">${v.emoji}</span><div class="grow">
+      return `<div class="card tight row" data-act="letter" data-id="${id}">${vface(id, 'lg')}<div class="grow">
         <b>${v.name}</b> <span class="hearts">${heartsStr(h)}</span>
         <div class="bar terra"><i style="width:${G.heartProg(id) * 100}%"></i></div>
         <div class="tiny">喜歡：${v.likes.map(ie).join(' ')}</div></div><span class="tiny">${h ? '💌' : ''}</span></div>`;
@@ -729,8 +848,8 @@ function letterHTML(id) {
     `不管小鎮變得多大，希望我們都能像現在這樣。`,
     `寫了好多封信給你，但最想說的其實只有一句：謝謝你，一直都在。`,
   ];
-  if (!h) return `<div class="letter"><span class="stamp">${v.emoji}</span>${v.name}還在觀察你呢……多幫忙完成他的訂單吧！<br><br>「${v.line}」</div>`;
-  return lines.slice(0, h).reverse().map((l, k) => `<div class="letter mb8"><span class="stamp">${v.emoji}</span>親愛的 ${n}：<br>${l}<br><div style="text-align:right">—— ${v.name} ${k === 0 ? '<span class="tag new">最新</span>' : ''}</div></div>`).join('');
+  if (!h) return `<div class="letter"><span class="stamp">${vface(id, 'sm')}</span>${v.name}還在觀察你呢……多幫忙完成他的訂單吧！<br><br>「${v.line}」</div>`;
+  return lines.slice(0, h).reverse().map((l, k) => `<div class="letter mb8"><span class="stamp">${vface(id, 'sm')}</span>親愛的 ${n}：<br>${l}<br><div style="text-align:right">—— ${v.name} ${k === 0 ? '<span class="tag new">最新</span>' : ''}</div></div>`).join('');
 }
 function renderAch() {
   const got = ACHIEVEMENTS.filter(a => S.ach[a.id]).length;
@@ -771,10 +890,10 @@ function renderSettings() {
 /* ───────── 開場 ───────── */
 function renderIntro() {
   const p = V.intro;
-  return `<div class="intro"><div class="scene">🌳🏡🐰🌾🌷</div><h1>慢慢小鎮</h1><div class="sub">SLOWTOWN · 慢慢來，比較快</div>
-    <div class="card"><h3>選一隻小動物當主角</h3><div class="species">${SPECIES.map(s => `<div class="opt${p.species === s.id ? ' sel' : ''}" data-act="introSp" data-id="${s.id}"><span class="e">${s.emoji}</span><div class="s">${s.name}</div></div>`).join('')}</div>
+  return `<div class="intro"><div class="scene">${treeSVG('tree', 'spring')}${houseSVG('home', '#d98f6c')}${animalSVG('rabbit', '#e8b4b0')}${animalSVG('bear', '#9db89a')}${treeSVG('pine', 'spring')}</div><h1>慢慢小鎮</h1><div class="sub">SLOWTOWN · 慢慢來，比較快</div>
+    <div class="card"><h3>選一隻小動物當主角</h3><div class="species">${SPECIES.map(s => `<div class="opt${p.species === s.id ? ' sel' : ''}" data-act="introSp" data-id="${s.id}">${face(s.id, p.color, 'md')}<div class="s">${s.name}</div></div>`).join('')}</div>
     <h3 class="mt12">圍巾顏色</h3><div class="colors">${SCARF_COLORS.map(c => `<button class="${p.color === c ? 'on' : ''}" style="background:${c}" data-act="introColor" data-c="${c}"></button>`).join('')}</div>
-    <div class="center mt12"><div class="avatar big" style="background:${p.color};margin:0 auto">${SPECIES.find(s => s.id === p.species).emoji}</div></div>
+    <div class="center mt12"><span class="face xl">${animalSVG(p.species, p.color)}</span></div>
     <div class="field"><label>你的名字</label><input id="in-name" maxlength="10" placeholder="例如：小米" value="${esc(p.name)}"></div>
     <div class="field"><label>小鎮的名字</label><input id="in-town" maxlength="10" placeholder="例如：午後鎮" value="${esc(p.town)}"></div>
     <button class="btn terra block mt12" style="padding:13px;font-size:16px" data-act="startGame">搬進小鎮 →</button></div>
@@ -807,14 +926,16 @@ function viewHTML() {
     case 'orders': return renderOrders();
     case 'finance': return renderFinance();
     case 'diary': return renderDiary();
-    default: return renderTown();
+    default: return '';
   }
 }
 function refresh() {
   if (!S) return;
   setHTML($('#hud'), renderHUD());
   setHTML($('#nav'), renderNav());
-  setHTML($('#view'), viewHTML());
+  const view = $('#view');
+  if (V.tab === 'town') renderTownInto(view);
+  else { if (view.dataset.mode === 'town') { view.dataset.mode = ''; view._h = null; Actors.reset(); } setHTML(view, viewHTML()); }
   if (V.sheetFn) setHTML($('#sheet .sheet-body'), V.sheetFn());
   document.body.classList.toggle('night', G.isNight());
   document.body.classList.toggle('move-mode', V.moveMode);
@@ -911,7 +1032,7 @@ const ACT = {
     if (r.heart) {
       const v = VILLAGERS[r.o.npc];
       UI.confetti(['❤️', '💕', '✨']);
-      UI.modal(`<span class="bigic">${v.emoji}</span><h2>和${v.name}更親近了</h2><div class="hearts" style="font-size:16px">${heartsStr(r.heart)}</div>
+      UI.modal(`<span class="bigic">${vface(r.o.npc, 'xl')}</span><h2>和${v.name}更親近了</h2><div class="hearts" style="font-size:16px">${heartsStr(r.heart)}</div>
         <div class="muted mt8">收到一封信和 🍀1</div><div class="mt12" style="text-align:left">${letterHTML(r.o.npc).split('</div>')[0]}</div></div>
         <div class="btns"><button class="btn" data-act="closeModal">收下</button></div>`);
     }
@@ -939,7 +1060,13 @@ const ACT = {
   sqSet: d => { V.stockQty = Math.max(1, +d.v); },
   buyStock: d => { const r = G.buyStock(d.k, V.stockQty); if (!fail(r)) { UI.sfx('coin'); UI.toast(`📈 買進 ${STOCKS[d.k].name} ${V.stockQty} 股`); } },
   sellStock: d => { const r = G.sellStock(d.k, V.stockQty); if (r) { UI.sfx('coin'); UI.toast(`💰 賣出得 🪙${fmt(r.got)}（${r.profit >= 0 ? '賺' : '賠'} ${fmt(Math.abs(r.profit))}）`); } },
-  letter: d => UI.openSheet(() => head(VILLAGERS[d.id].emoji, VILLAGERS[d.id].name + '的信', `友情 ${heartsStr(G.hearts(d.id))}`) + letterHTML(d.id)),
+  chat: d => {
+    const a = Actors.list.find(x => x.npc === d.v); if (!a) return;
+    const v = VILLAGERS[d.v], h = G.hearts(d.v);
+    Actors.say(a, h >= 3 ? `${v.line}` : pick([v.line, `喜歡${it(pick(v.likes)).name}${ie(pick(v.likes))}`, '你好呀～']), 3200);
+    UI.sfx('pop');
+  },
+  letter: d => UI.openSheet(() => head(vface(d.id, 'lg'), VILLAGERS[d.id].name + '的信', `友情 ${heartsStr(G.hearts(d.id))}`) + letterHTML(d.id)),
   toggle: d => { S.settings[d.k] = !S.settings[d.k]; },
   exportSave: () => {
     const code = G.exportSave();
@@ -968,7 +1095,7 @@ const ACT = {
     syncIntro();
     const p = V.intro;
     G.newGame({ species: p.species, color: p.color, name: p.name.trim() || '小米', town: p.town.trim() || '午後鎮' });
-    UI.modal(`<span class="bigic">${sp().emoji}</span><h2>歡迎來到${esc(S.player.town)}！</h2>
+    UI.modal(`<span class="bigic"><span class="face xl">${animalSVG(S.player.species, S.player.color)}</span></span><h2>歡迎來到${esc(S.player.town)}！</h2>
       <div class="muted" style="line-height:1.8">這裡有一間小屋、幾塊田和一點點積蓄。<br>種田、開工坊、做生意、存錢投資，<br>把這裡慢慢變成你喜歡的樣子吧。</div>
       <div class="tiny mt12">💡 小麥快熟了，點點看閃亮的作物 ✨</div>
       <div class="btns"><button class="btn terra" data-act="closeModal">開始生活</button></div>`);
@@ -1008,6 +1135,7 @@ function loop() {
     UI.modal(`<span class="bigic">${r.season.s.emoji}</span><h2>${r.season.s.full}來了</h2><div class="muted">第 ${r.season.year} 年 · ${r.season.s.fest}開始！<br>${r.season.s.festItems.map(ie).join(' ')} 訂單獎勵 +30%、售價 +20%</div><div class="btns"><button class="btn" data-act="closeModal">好的</button></div>`);
     setParticles();
   }
+  Actors.tick();
   (r.ach || []).forEach(a => { UI.sfx('up'); UI.toast(`🏆 成就解鎖「${a.name}」獲得 🍀${a.clovers}`); });
   refresh();
 }
@@ -1040,7 +1168,7 @@ function welcomeBack(before) {
   if (ds('interest') >= 1) lines.push(`🐧 存款生了 🪙${fmt(ds('interest'))} 利息`);
   if (ds('dividends') >= 1) lines.push(`🦊 收到股利 🪙${fmt(ds('dividends'))}`);
   if (!lines.length) return;
-  UI.modal(`<span class="bigic">${sp().emoji}</span><h2>歡迎回來！</h2><div class="muted">你離開了 ${fmtT(away)}，小鎮一直在慢慢運轉：</div>
+  UI.modal(`<span class="bigic"><span class="face xl">${animalSVG(S.player.species, S.player.color)}</span></span><h2>歡迎回來！</h2><div class="muted">你離開了 ${fmtT(away)}，小鎮一直在慢慢運轉：</div>
     <div class="card tight mt12" style="text-align:left;line-height:2;font-size:13px">${lines.join('<br>')}</div>
     <div class="btns"><button class="btn" data-act="closeModal">去看看</button></div>`);
 }
